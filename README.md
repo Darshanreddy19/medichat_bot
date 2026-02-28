@@ -3,11 +3,11 @@
 ## Project info
 
 **URL**: https://darshanreddy19.github.io/medichat_bot/
-#WEBSITE URL-https://medichat-bot-di3e.onrender.com/
+
 
 ## Live Demo
 
-- https://darshanreddy19.github.io/medichat_bot/
+- https://medichat-bot-di3e.onrender.com/
 
 ## How can I edit this code?
 
