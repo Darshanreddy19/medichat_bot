@@ -2,7 +2,11 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**URL**: https://darshanreddy19.github.io/medichat_bot/
+
+## Live Demo
+
+- https://darshanreddy19.github.io/medichat_bot/
 
 ## How can I edit this code?
 
@@ -99,3 +103,5 @@ npm start                # launch Express (serving API + static files)
 Server listens on port `4000` by default (override with `PORT` environment var).
 
 ---
+
+
