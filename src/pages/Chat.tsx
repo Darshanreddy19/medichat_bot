@@ -15,7 +15,16 @@ const quickPrompts = [
   "What are common symptoms of diabetes?",
   "How to manage high blood pressure?",
   "Tell me about asthma treatments",
-  "What causes chronic fatigue?",
+  "What medications for COPD?",
+  "Prevention tips for heart disease",
+  "Tests needed for thyroid problems",
+];
+
+const followUpPrompts = [
+  "What medications are used?",
+  "What tests should I get?",
+  "How can I prevent this?",
+  "What are the warning signs?",
 ];
 
 const Chat = () => {
@@ -24,12 +33,15 @@ const Chat = () => {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello! I'm **MediChat AI**, your healthcare companion. I can help you understand chronic diseases, medications, treatment plans, and more.\n\nHow can I assist you today?",
+        "👋 **Hey there, health explorer!**\n\nWelcome to **MediChat AI** — your personal health detective! 🔍\n\nWhether you're worried about symptoms, curious about medications, or want to know what's going on with your body, I'm here to help! Here's what I can do:\n\n✅ **Identify** what health condition you might be facing\n💊 **Suggest** exact medications with proper dosages\n🌿 **Share** natural remedies that complement treatment\n🧪 **Recommend** tests you might need\n🛡️ **Guide** you on prevention strategies\n\n**Just describe your symptoms or ask about any health condition!**\n\nRemember: I'm a helper, not a doctor. Always consult a healthcare pro! 👨‍⚕️",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showFollowUps, setShowFollowUps] = useState(false);
+  const [availableDiseases, setAvailableDiseases] = useState<Array<{key: string, title: string}>>([]);
+  const [showDiseaseList, setShowDiseaseList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -41,9 +53,22 @@ const Chat = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  useEffect(() => {
+    // Fetch available diseases on mount
+    fetch('/api/diseases')
+      .then(res => res.json())
+      .then(data => {
+        if (data.diseases) {
+          setAvailableDiseases(data.diseases);
+        }
+      })
+      .catch(err => console.error('Failed to load diseases', err));
+  }, []);
+
   // send query to backend and append response
   const sendQueryToServer = async (query: string) => {
     setIsTyping(true);
+    setShowFollowUps(false);
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -60,6 +85,10 @@ const Chat = () => {
           timestamp: new Date(),
         },
       ]);
+      // Show follow-up prompts after disease-specific responses
+      if (data.response && data.response.includes('##')) {
+        setTimeout(() => setShowFollowUps(true), 500);
+      }
     } catch (err) {
       console.error('chat request failed', err);
       setMessages((prev) => [
@@ -87,12 +116,20 @@ const Chat = () => {
     setMessages((prev) => [...prev, userMsg]);
     const query = input;
     setInput("");
+    setShowDiseaseList(false);
     sendQueryToServer(query);
   };
 
   const handleQuickPrompt = (prompt: string) => {
-    setInput(prompt);
-    inputRef.current?.focus();
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: prompt,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setShowDiseaseList(false);
+    sendQueryToServer(prompt);
   };
 
   const renderContent = (content: string) => {
@@ -259,7 +296,71 @@ const Chat = () => {
               </motion.button>
             ))}
           </div>
+          <div className="mt-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowDiseaseList(!showDiseaseList)}
+              className="glass-card px-3 py-2 text-xs text-primary font-medium hover:border-primary/50 transition-colors cursor-pointer"
+            >
+              {showDiseaseList ? "Hide" : "Browse"} All Conditions ({availableDiseases.length})
+            </motion.button>
+          </div>
         </div>
+      )}
+
+      {/* Disease Browser */}
+      {showDiseaseList && messages.length <= 1 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="px-4 pb-3 max-w-4xl mx-auto w-full"
+        >
+          <div className="glass-card p-4 max-h-60 overflow-y-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {availableDiseases.map((disease) => (
+                <motion.button
+                  key={disease.key}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleQuickPrompt(`Tell me about ${disease.title}`)}
+                  className="text-left px-3 py-2 rounded-lg bg-secondary/50 hover:bg-primary/10 hover:border-primary/30 border border-transparent text-xs transition-all"
+                >
+                  {disease.title}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Follow-up Prompts */}
+      {showFollowUps && messages.length > 1 && !isTyping && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="px-4 pb-2 max-w-4xl mx-auto w-full"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-3 h-3 text-primary" />
+            <span className="text-xs font-medium text-muted-foreground">Follow-up questions</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {followUpPrompts.map((prompt) => (
+              <motion.button
+                key={prompt}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleQuickPrompt(prompt)}
+                className="glass-card px-3 py-1.5 text-xs text-foreground/80 hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+              >
+                {prompt}
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
       )}
 
       {/* Input */}
@@ -270,7 +371,7 @@ const Chat = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Describe your symptoms or ask a medical question..."
+            placeholder="Tell me your symptoms or ask me anything about your health... 🏥"
             className="flex-1 px-4 py-3 rounded-xl bg-secondary text-foreground placeholder:text-muted-foreground border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
             disabled={isTyping}
           />
@@ -286,7 +387,7 @@ const Chat = () => {
           </motion.button>
         </div>
         <p className="text-[10px] text-muted-foreground text-center mt-2">
-          MediChat AI provides general information only. Always consult a healthcare professional.
+          💡 I identify conditions, suggest medications with dosages & natural remedies. 🔒 Your privacy matters. Always confirm with a real doctor! 👨‍⚕️
         </p>
       </div>
     </div>
